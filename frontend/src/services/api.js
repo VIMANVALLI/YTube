@@ -1,43 +1,81 @@
 const API_URL = "https://ytube-20.onrender.com";
 
-export const downloadVideo = async (url, platform) => {
-  const response = await fetch(`${API_URL}/download`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      url,
-      platform,
-    }),
-  });
+export const downloadVideo = async (
+  url,
+  platform
+) => {
+  const response = await fetch(
+    `${API_URL}/download`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        url,
+        platform,
+      }),
+    }
+  );
 
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.detail || "Download failed");
+    throw new Error(
+      data.detail || "Download failed"
+    );
   }
 
   return data;
 };
 
+
+// =========================================
+// GET FULL FILE URL
+// =========================================
+
+export const getDownloadFileUrl = (
+  downloadUrl
+) => {
+  return `${API_URL}${downloadUrl}`;
+};
+
+
+// =========================================
+// GET DOWNLOADED VIDEOS
+// =========================================
 
 export const getDownloadedVideos = async () => {
-  const response = await fetch(`${API_URL}/downloads`);
+  const response = await fetch(
+    `${API_URL}/downloads`
+  );
 
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.detail || "Failed to get downloads");
+    throw new Error(
+      data.detail ||
+      "Failed to get downloads"
+    );
   }
 
   return data;
 };
 
 
-export const deleteDownloadedVideo = async (filename) => {
+// =========================================
+// DELETE VIDEO
+// =========================================
+
+export const deleteDownloadedVideo = async (
+  filename
+) => {
   const response = await fetch(
-    `${API_URL}/downloads/${encodeURIComponent(filename)}`,
+    `${API_URL}/downloads/${encodeURIComponent(
+      filename
+    )}`,
     {
       method: "DELETE",
     }
@@ -46,7 +84,10 @@ export const deleteDownloadedVideo = async (filename) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.detail || "Failed to delete video");
+    throw new Error(
+      data.detail ||
+      "Failed to delete video"
+    );
   }
 
   return data;
