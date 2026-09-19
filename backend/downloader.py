@@ -23,18 +23,47 @@ FFMPEG_PATH = shutil.which("ffmpeg")
 
 
 # =========================================
+# DENO / JAVASCRIPT RUNTIME
+# =========================================
+
+# Try to find Deno from PATH first
+DENO_PATH = shutil.which("deno")
+
+# If not found in PATH, check the default Deno location
+if not DENO_PATH:
+
+    DEFAULT_DENO_PATH = os.path.expanduser(
+        "~/.deno/bin/deno"
+    )
+
+    if os.path.exists(DEFAULT_DENO_PATH):
+        DENO_PATH = DEFAULT_DENO_PATH
+
+
+print("=" * 60)
+print("Runtime configuration")
+print(f"FFmpeg: {FFMPEG_PATH}")
+print(f"Deno: {DENO_PATH}")
+print("=" * 60)
+
+
+# =========================================
 # YOUTUBE COOKIES
 # =========================================
 
 # Render Secret File - READ ONLY
-YOUTUBE_COOKIES_SOURCE = "/etc/secrets/youtube_cookies.txt"
+YOUTUBE_COOKIES_SOURCE = (
+    "/etc/secrets/youtube_cookies.txt"
+)
 
 # Writable temporary location
-YOUTUBE_COOKIES_PATH = "/tmp/youtube_cookies.txt"
+YOUTUBE_COOKIES_PATH = (
+    "/tmp/youtube_cookies.txt"
+)
 
 
 # =========================================
-# COPY YOUTUBE COOKIES TO WRITABLE STORAGE
+# COPY YOUTUBE COOKIES
 # =========================================
 
 def prepare_youtube_cookies():
@@ -43,21 +72,31 @@ def prepare_youtube_cookies():
     /etc/secrets is read-only.
     """
 
-    if not os.path.exists(YOUTUBE_COOKIES_SOURCE):
-        print("WARNING: YouTube Secret File not found.")
+    if not os.path.exists(
+        YOUTUBE_COOKIES_SOURCE
+    ):
+
+        print(
+            "WARNING: YouTube Secret File not found."
+        )
+
         return False
 
     try:
+
         shutil.copyfile(
             YOUTUBE_COOKIES_SOURCE,
             YOUTUBE_COOKIES_PATH
         )
 
-        print("YouTube cookies copied to writable storage.")
+        print(
+            "YouTube cookies copied to writable storage."
+        )
 
         return True
 
     except Exception as e:
+
         print(
             "WARNING: Could not copy YouTube cookies:",
             str(e)
@@ -71,14 +110,23 @@ def prepare_youtube_cookies():
 # =========================================
 
 download_progress = {
+
     "progress": 0,
+
     "status": "Idle",
+
     "downloaded_bytes": 0,
+
     "total_bytes": 0,
+
     "speed": 0,
+
     "eta": 0,
+
     "filename": "",
+
     "completed": False,
+
     "error": None,
 }
 
@@ -108,6 +156,7 @@ def reset_progress():
         "completed": False,
 
         "error": None,
+
     })
 
 
@@ -119,9 +168,10 @@ def progress_hook(data):
 
     status = data.get("status")
 
-    # -----------------------------------------
+
+    # =====================================
     # DOWNLOADING
-    # -----------------------------------------
+    # =====================================
 
     if status == "downloading":
 
@@ -136,6 +186,7 @@ def progress_hook(data):
             or 0
         )
 
+
         if total:
 
             percentage = (
@@ -147,53 +198,75 @@ def progress_hook(data):
                 1
             )
 
-        download_progress["downloaded_bytes"] = downloaded
 
-        download_progress["total_bytes"] = total
+        download_progress[
+            "downloaded_bytes"
+        ] = downloaded
 
-        download_progress["speed"] = (
-            data.get("speed") or 0
-        )
 
-        download_progress["eta"] = (
-            data.get("eta") or 0
-        )
+        download_progress[
+            "total_bytes"
+        ] = total
+
+
+        download_progress[
+            "speed"
+        ] = data.get("speed") or 0
+
+
+        download_progress[
+            "eta"
+        ] = data.get("eta") or 0
+
 
         filename = data.get(
             "filename",
             ""
         )
 
+
         if filename:
 
-            download_progress["filename"] = (
-                os.path.basename(filename)
+            download_progress[
+                "filename"
+            ] = os.path.basename(
+                filename
             )
 
-        download_progress["status"] = "Downloading..."
+
+        download_progress[
+            "status"
+        ] = "Downloading..."
 
 
-    # -----------------------------------------
+    # =====================================
     # DOWNLOAD FINISHED
-    # -----------------------------------------
+    # =====================================
 
     elif status == "finished":
 
-        download_progress["progress"] = 100
+        download_progress[
+            "progress"
+        ] = 100
 
-        download_progress["status"] = (
-            "Processing video..."
-        )
+
+        download_progress[
+            "status"
+        ] = "Processing video..."
+
 
         filename = data.get(
             "filename",
             ""
         )
 
+
         if filename:
 
-            download_progress["filename"] = (
-                os.path.basename(filename)
+            download_progress[
+                "filename"
+            ] = os.path.basename(
+                filename
             )
 
 
@@ -201,14 +274,17 @@ def progress_hook(data):
 # DOWNLOAD VIDEO
 # =========================================
 
-def download_video(url: str, platform: str):
+def download_video(
+    url: str,
+    platform: str
+):
 
     reset_progress()
 
 
-    # =========================================
+    # =====================================
     # VALIDATE PLATFORM
-    # =========================================
+    # =====================================
 
     if platform not in [
         "youtube",
@@ -217,40 +293,58 @@ def download_video(url: str, platform: str):
 
         error = "Unsupported platform."
 
-        download_progress["status"] = "Error"
+        download_progress[
+            "status"
+        ] = "Error"
 
-        download_progress["error"] = error
+        download_progress[
+            "error"
+        ] = error
+
 
         return {
+
             "success": False,
+
             "error": error
+
         }
 
 
-    # =========================================
+    # =====================================
     # VALIDATE URL
-    # =========================================
+    # =====================================
 
     if not url or not url.strip():
 
-        error = "Please provide a valid URL."
+        error = (
+            "Please provide a valid URL."
+        )
 
-        download_progress["status"] = "Error"
+        download_progress[
+            "status"
+        ] = "Error"
 
-        download_progress["error"] = error
+        download_progress[
+            "error"
+        ] = error
+
 
         return {
+
             "success": False,
+
             "error": error
+
         }
 
 
     url = url.strip()
 
 
-    # =========================================
+    # =====================================
     # CHECK FFMPEG
-    # =========================================
+    # =====================================
 
     if not FFMPEG_PATH:
 
@@ -258,21 +352,30 @@ def download_video(url: str, platform: str):
             "FFmpeg was not found on the server."
         )
 
-        download_progress["status"] = "Error"
+        download_progress[
+            "status"
+        ] = "Error"
 
-        download_progress["error"] = error
+        download_progress[
+            "error"
+        ] = error
+
 
         return {
+
             "success": False,
+
             "error": error
+
         }
 
 
-    # =========================================
+    # =====================================
     # PREPARE YOUTUBE COOKIES
-    # =========================================
+    # =====================================
 
     youtube_cookies_ready = False
+
 
     if platform == "youtube":
 
@@ -281,105 +384,140 @@ def download_video(url: str, platform: str):
         )
 
 
-    # =========================================
+    # =====================================
     # YT-DLP OPTIONS
-    # =========================================
+    # =====================================
 
     options = {
 
-        # Best video + best audio
+        # Best available video + audio
         "format": "bv*+ba/b",
 
-        # Convert/merge to MP4
+
+        # Merge into MP4
         "merge_output_format": "mp4",
+
 
         # FFmpeg
         "ffmpeg_location": FFMPEG_PATH,
 
-        # Output filename
+
+        # Output file
         "outtmpl": os.path.join(
             DOWNLOAD_DIR,
             "%(title)s.%(ext)s"
         ),
 
+
         # Don't download playlists
         "noplaylist": True,
+
 
         # Console output
         "quiet": False,
 
+
         "no_warnings": False,
+
 
         # Don't ignore errors
         "ignoreerrors": False,
 
+
         # Safe filenames
         "restrictfilenames": True,
 
-        # Replace existing file
+
+        # Replace existing files
         "overwrites": True,
 
-        # Progress
+
+        # Progress hook
         "progress_hooks": [
             progress_hook
         ],
+
 
         # Retry settings
         "retries": 5,
 
         "fragment_retries": 5,
 
+
         # Network timeout
         "socket_timeout": 30,
 
-        # Download chunks
+
+        # HTTP chunk size
         "http_chunk_size": 10485760,
 
-        # YouTube clients
-        "extractor_args": {
-
-            "youtube": {
-
-                "player_client": [
-                    "android",
-                    "web"
-                ]
-
-            }
-
-        },
     }
 
 
-    # =========================================
+    # =====================================
+    # YOUTUBE JAVASCRIPT RUNTIME
+    # =====================================
+
+    if platform == "youtube":
+
+        if DENO_PATH:
+
+            options["js_runtimes"] = {
+
+                "deno": DENO_PATH
+
+            }
+
+            print(
+                f"Deno JavaScript runtime enabled: "
+                f"{DENO_PATH}"
+            )
+
+        else:
+
+            print(
+                "WARNING: Deno was not found."
+            )
+
+            print(
+                "YouTube may fail because "
+                "yt-dlp EJS requires a JavaScript runtime."
+            )
+
+
+    # =====================================
     # ENABLE YOUTUBE COOKIES
-    # =========================================
+    # =====================================
 
     if (
         platform == "youtube"
         and youtube_cookies_ready
-        and os.path.exists(YOUTUBE_COOKIES_PATH)
-    ):
-
-        options["cookiefile"] = (
+        and os.path.exists(
             YOUTUBE_COOKIES_PATH
         )
+    ):
+
+        options[
+            "cookiefile"
+        ] = YOUTUBE_COOKIES_PATH
+
 
         print(
             "YouTube cookies found and enabled."
         )
 
+
     elif platform == "youtube":
 
         print(
-            "WARNING: Writable YouTube cookies "
-            "file not found."
+            "WARNING: Writable YouTube "
+            "cookies file not found."
         )
 
 
-    # =========================================
+    # =====================================
     # START DOWNLOAD
-    # =========================================
+    # =====================================
 
     try:
 
@@ -396,6 +534,10 @@ def download_video(url: str, platform: str):
         )
 
         print(
+            f"Deno: {DENO_PATH}"
+        )
+
+        print(
             f"YouTube cookies: "
             f"{youtube_cookies_ready}"
         )
@@ -403,15 +545,16 @@ def download_video(url: str, platform: str):
         print("=" * 60)
 
 
-        # -----------------------------------------
-        # CREATE YT-DLP INSTANCE
-        # -----------------------------------------
+        # =================================
+        # CREATE YT-DLP
+        # =================================
 
         with YoutubeDL(options) as ydl:
 
-            # -------------------------------------
+
+            # =============================
             # GET VIDEO INFORMATION
-            # -------------------------------------
+            # =============================
 
             info = ydl.extract_info(
                 url,
@@ -422,26 +565,33 @@ def download_video(url: str, platform: str):
             if not info:
 
                 error = (
-                    "Could not retrieve video information."
+                    "Could not retrieve "
+                    "video information."
                 )
 
-                download_progress["status"] = (
-                    "Error"
-                )
 
-                download_progress["error"] = (
-                    error
-                )
+                download_progress[
+                    "status"
+                ] = "Error"
+
+
+                download_progress[
+                    "error"
+                ] = error
+
 
                 return {
+
                     "success": False,
+
                     "error": error
+
                 }
 
 
-            # -------------------------------------
+            # =============================
             # VIDEO TITLE
-            # -------------------------------------
+            # =============================
 
             title = info.get(
                 "title",
@@ -454,25 +604,32 @@ def download_video(url: str, platform: str):
             )
 
 
-            # -------------------------------------
+            # =============================
             # DOWNLOAD
-            # -------------------------------------
+            # =============================
 
             ydl.download([url])
 
 
-            # -------------------------------------
-            # FIND FINAL FILE
-            # -------------------------------------
+            # =============================
+            # GET GENERATED FILENAME
+            # =============================
 
             filename = ydl.prepare_filename(
                 info
             )
 
-            base_filename = os.path.splitext(
-                filename
-            )[0]
 
+            base_filename = (
+                os.path.splitext(
+                    filename
+                )[0]
+            )
+
+
+            # =============================
+            # POSSIBLE OUTPUT FILES
+            # =============================
 
             possible_files = [
 
@@ -490,24 +647,44 @@ def download_video(url: str, platform: str):
             final_filename = None
 
 
+            # =============================
+            # FIND FINAL FILE
+            # =============================
+
             for file_path in possible_files:
 
-                if os.path.exists(file_path):
+                if os.path.exists(
+                    file_path
+                ):
 
-                    final_filename = file_path
+                    final_filename = (
+                        file_path
+                    )
 
                     break
 
 
-            # -------------------------------------
-            # FALLBACK
-            # -------------------------------------
+            # =============================
+            # FALLBACK SEARCH
+            # =============================
 
             if not final_filename:
 
-                directory_files = os.listdir(
-                    DOWNLOAD_DIR
+                directory_files = (
+                    os.listdir(
+                        DOWNLOAD_DIR
+                    )
                 )
+
+
+                target_name = (
+                    os.path.splitext(
+                        os.path.basename(
+                            filename
+                        )
+                    )[0]
+                )
+
 
                 matching_files = [
 
@@ -520,9 +697,7 @@ def download_video(url: str, platform: str):
 
                     if os.path.splitext(
                         file
-                    )[0] == os.path.splitext(
-                        os.path.basename(filename)
-                    )[0]
+                    )[0] == target_name
 
                 ]
 
@@ -534,52 +709,74 @@ def download_video(url: str, platform: str):
                     )
 
 
-            # -------------------------------------
+            # =============================
             # FILE NOT FOUND
-            # -------------------------------------
+            # =============================
 
             if not final_filename:
 
                 error = (
                     "Download completed, "
-                    "but the video file was not found."
+                    "but the video file "
+                    "was not found."
                 )
 
-                download_progress["status"] = (
-                    "Error"
-                )
 
-                download_progress["error"] = (
-                    error
-                )
+                download_progress[
+                    "status"
+                ] = "Error"
+
+
+                download_progress[
+                    "error"
+                ] = error
+
 
                 return {
+
                     "success": False,
+
                     "error": error
+
                 }
 
 
-            # -------------------------------------
+            # =============================
             # SUCCESS
-            # -------------------------------------
+            # =============================
 
-            final_filename = os.path.abspath(
+            final_filename = (
+                os.path.abspath(
+                    final_filename
+                )
+            )
+
+
+            download_progress[
+                "progress"
+            ] = 100
+
+
+            download_progress[
+                "status"
+            ] = "Completed"
+
+
+            download_progress[
+                "filename"
+            ] = os.path.basename(
                 final_filename
             )
 
-            download_progress["progress"] = 100
 
-            download_progress["status"] = (
-                "Completed"
-            )
+            download_progress[
+                "completed"
+            ] = True
 
-            download_progress["filename"] = (
-                os.path.basename(final_filename)
-            )
 
-            download_progress["completed"] = True
-
-            download_progress["error"] = None
+            download_progress[
+                "error"
+            ] = None
 
 
             print("=" * 60)
@@ -610,13 +807,14 @@ def download_video(url: str, platform: str):
             }
 
 
-    # =========================================
+    # =====================================
     # ERROR HANDLING
-    # =========================================
+    # =====================================
 
     except Exception as e:
 
         error = str(e)
+
 
         print("=" * 60)
 
@@ -629,13 +827,19 @@ def download_video(url: str, platform: str):
         print("=" * 60)
 
 
-        download_progress["status"] = (
-            "Error"
-        )
+        download_progress[
+            "status"
+        ] = "Error"
 
-        download_progress["error"] = error
 
-        download_progress["completed"] = False
+        download_progress[
+            "error"
+        ] = error
+
+
+        download_progress[
+            "completed"
+        ] = False
 
 
         return {
