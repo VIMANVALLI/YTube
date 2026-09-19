@@ -1,33 +1,18 @@
 import os
 import shutil
-
 from yt_dlp import YoutubeDL
 
 
 # =========================================
-# YOUTUBE COOKIES
-# =========================================
-
-YOUTUBE_COOKIES_PATH = (
-    "/etc/secrets/youtube_cookies.txt"
-)
-
-
-# =========================================
-# DOWNLOAD FOLDER
+# DOWNLOAD DIRECTORY
 # =========================================
 
 DOWNLOAD_DIR = os.path.join(
-    os.path.dirname(
-        os.path.abspath(__file__)
-    ),
+    os.path.dirname(os.path.abspath(__file__)),
     "downloads"
 )
 
-os.makedirs(
-    DOWNLOAD_DIR,
-    exist_ok=True
-)
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
 # =========================================
@@ -35,6 +20,50 @@ os.makedirs(
 # =========================================
 
 FFMPEG_PATH = shutil.which("ffmpeg")
+
+
+# =========================================
+# YOUTUBE COOKIES
+# =========================================
+
+# Render Secret File - READ ONLY
+YOUTUBE_COOKIES_SOURCE = "/etc/secrets/youtube_cookies.txt"
+
+# Writable temporary location
+YOUTUBE_COOKIES_PATH = "/tmp/youtube_cookies.txt"
+
+
+# =========================================
+# COPY YOUTUBE COOKIES TO WRITABLE STORAGE
+# =========================================
+
+def prepare_youtube_cookies():
+    """
+    Copy the Render Secret File to /tmp because
+    /etc/secrets is read-only.
+    """
+
+    if not os.path.exists(YOUTUBE_COOKIES_SOURCE):
+        print("WARNING: YouTube Secret File not found.")
+        return False
+
+    try:
+        shutil.copyfile(
+            YOUTUBE_COOKIES_SOURCE,
+            YOUTUBE_COOKIES_PATH
+        )
+
+        print("YouTube cookies copied to writable storage.")
+
+        return True
+
+    except Exception as e:
+        print(
+            "WARNING: Could not copy YouTube cookies:",
+            str(e)
+        )
+
+        return False
 
 
 # =========================================
@@ -64,9 +93,7 @@ def reset_progress():
 
         "progress": 0,
 
-        "status": (
-            "Starting download..."
-        ),
+        "status": "Starting download...",
 
         "downloaded_bytes": 0,
 
@@ -92,10 +119,9 @@ def progress_hook(data):
 
     status = data.get("status")
 
-
-    # =====================================
+    # -----------------------------------------
     # DOWNLOADING
-    # =====================================
+    # -----------------------------------------
 
     if status == "downloading":
 
@@ -110,7 +136,6 @@ def progress_hook(data):
             or 0
         )
 
-
         if total:
 
             percentage = (
@@ -118,85 +143,57 @@ def progress_hook(data):
             ) * 100
 
             download_progress["progress"] = round(
-                min(
-                    100,
-                    max(
-                        0,
-                        percentage
-                    )
-                ),
+                min(100, max(0, percentage)),
                 1
             )
 
+        download_progress["downloaded_bytes"] = downloaded
 
-        download_progress[
-            "downloaded_bytes"
-        ] = downloaded
+        download_progress["total_bytes"] = total
 
+        download_progress["speed"] = (
+            data.get("speed") or 0
+        )
 
-        download_progress[
-            "total_bytes"
-        ] = total
-
-
-        download_progress[
-            "speed"
-        ] = data.get("speed") or 0
-
-
-        download_progress[
-            "eta"
-        ] = data.get("eta") or 0
-
+        download_progress["eta"] = (
+            data.get("eta") or 0
+        )
 
         filename = data.get(
             "filename",
             ""
         )
 
-
         if filename:
 
-            download_progress[
-                "filename"
-            ] = os.path.basename(
-                filename
+            download_progress["filename"] = (
+                os.path.basename(filename)
             )
 
-
-        download_progress[
-            "status"
-        ] = "Downloading..."
+        download_progress["status"] = "Downloading..."
 
 
-    # =====================================
+    # -----------------------------------------
     # DOWNLOAD FINISHED
-    # =====================================
+    # -----------------------------------------
 
     elif status == "finished":
 
-        download_progress[
-            "progress"
-        ] = 100
+        download_progress["progress"] = 100
 
-
-        download_progress[
-            "status"
-        ] = "Processing video..."
-
+        download_progress["status"] = (
+            "Processing video..."
+        )
 
         filename = data.get(
             "filename",
             ""
         )
 
-
         if filename:
 
-            download_progress[
-                "filename"
-            ] = os.path.basename(
-                filename
+            download_progress["filename"] = (
+                os.path.basename(filename)
             )
 
 
@@ -204,109 +201,100 @@ def progress_hook(data):
 # DOWNLOAD VIDEO
 # =========================================
 
-def download_video(
-    url: str,
-    platform: str
-):
+def download_video(url: str, platform: str):
 
     reset_progress()
 
 
-    # =====================================
+    # =========================================
     # VALIDATE PLATFORM
-    # =====================================
+    # =========================================
 
     if platform not in [
         "youtube",
         "instagram"
     ]:
 
-        message = "Invalid platform."
+        error = "Unsupported platform."
 
-        download_progress[
-            "status"
-        ] = "Error"
+        download_progress["status"] = "Error"
 
-        download_progress[
-            "error"
-        ] = message
-
+        download_progress["error"] = error
 
         return {
             "success": False,
-            "error": message
+            "error": error
         }
 
 
-    # =====================================
+    # =========================================
     # VALIDATE URL
-    # =====================================
+    # =========================================
 
-    if not url.strip():
+    if not url or not url.strip():
 
-        message = "URL is required."
+        error = "Please provide a valid URL."
 
-        download_progress[
-            "status"
-        ] = "Error"
+        download_progress["status"] = "Error"
 
-        download_progress[
-            "error"
-        ] = message
-
+        download_progress["error"] = error
 
         return {
             "success": False,
-            "error": message
-        }
-
-
-    # =====================================
-    # CHECK FFMPEG
-    # =====================================
-
-    if not FFMPEG_PATH:
-
-        message = (
-            "FFmpeg was not found "
-            "on the server."
-        )
-
-        download_progress[
-            "status"
-        ] = "Error"
-
-        download_progress[
-            "error"
-        ] = message
-
-
-        return {
-            "success": False,
-            "error": message
+            "error": error
         }
 
 
     url = url.strip()
 
 
-    # =====================================
+    # =========================================
+    # CHECK FFMPEG
+    # =========================================
+
+    if not FFMPEG_PATH:
+
+        error = (
+            "FFmpeg was not found on the server."
+        )
+
+        download_progress["status"] = "Error"
+
+        download_progress["error"] = error
+
+        return {
+            "success": False,
+            "error": error
+        }
+
+
+    # =========================================
+    # PREPARE YOUTUBE COOKIES
+    # =========================================
+
+    youtube_cookies_ready = False
+
+    if platform == "youtube":
+
+        youtube_cookies_ready = (
+            prepare_youtube_cookies()
+        )
+
+
+    # =========================================
     # YT-DLP OPTIONS
-    # =====================================
+    # =========================================
 
     options = {
 
-        # Best video + audio
+        # Best video + best audio
         "format": "bv*+ba/b",
 
-
-        # Merge into MP4
+        # Convert/merge to MP4
         "merge_output_format": "mp4",
-
 
         # FFmpeg
         "ffmpeg_location": FFMPEG_PATH,
-
 
         # Output filename
         "outtmpl": os.path.join(
@@ -314,53 +302,40 @@ def download_video(
             "%(title)s.%(ext)s"
         ),
 
-
         # Don't download playlists
         "noplaylist": True,
 
-
-        # Show yt-dlp output
+        # Console output
         "quiet": False,
 
-
         "no_warnings": False,
-
 
         # Don't ignore errors
         "ignoreerrors": False,
 
-
         # Safe filenames
         "restrictfilenames": True,
 
-
-        # Overwrite existing files
+        # Replace existing file
         "overwrites": True,
 
-
-        # Progress hook
+        # Progress
         "progress_hooks": [
             progress_hook
         ],
 
-
-        # =================================
-        # CONNECTION SETTINGS
-        # =================================
-
+        # Retry settings
         "retries": 5,
 
         "fragment_retries": 5,
 
+        # Network timeout
         "socket_timeout": 30,
 
+        # Download chunks
         "http_chunk_size": 10485760,
 
-
-        # =================================
-        # YOUTUBE CLIENT
-        # =================================
-
+        # YouTube clients
         "extractor_args": {
 
             "youtube": {
@@ -373,16 +348,17 @@ def download_video(
             }
 
         },
-
     }
 
 
-    # =====================================
-    # YOUTUBE COOKIES
-    # =====================================
+    # =========================================
+    # ENABLE YOUTUBE COOKIES
+    # =========================================
 
-    if os.path.exists(
-        YOUTUBE_COOKIES_PATH
+    if (
+        platform == "youtube"
+        and youtube_cookies_ready
+        and os.path.exists(YOUTUBE_COOKIES_PATH)
     ):
 
         options["cookiefile"] = (
@@ -390,73 +366,52 @@ def download_video(
         )
 
         print(
-            "YouTube cookies found "
-            "and enabled."
+            "YouTube cookies found and enabled."
         )
 
-    else:
+    elif platform == "youtube":
 
         print(
-            "WARNING: YouTube cookies "
+            "WARNING: Writable YouTube cookies "
             "file not found."
         )
 
 
-    # =====================================
+    # =========================================
     # START DOWNLOAD
-    # =====================================
+    # =========================================
 
     try:
 
+        print("=" * 60)
+
         print(
-            "========================================"
+            f"Starting {platform} download:"
+        )
+
+        print(url)
+
+        print(
+            f"FFmpeg: {FFMPEG_PATH}"
         )
 
         print(
-            "STARTING DOWNLOAD"
+            f"YouTube cookies: "
+            f"{youtube_cookies_ready}"
         )
 
-        print(
-            "Platform:",
-            platform
-        )
-
-        print(
-            "URL:",
-            url
-        )
-
-        print(
-            "FFmpeg:",
-            FFMPEG_PATH
-        )
-
-        print(
-            "Download directory:",
-            DOWNLOAD_DIR
-        )
-
-        print(
-            "YouTube cookies:",
-            os.path.exists(
-                YOUTUBE_COOKIES_PATH
-            )
-        )
-
-        print(
-            "========================================"
-        )
+        print("=" * 60)
 
 
-        # =================================
-        # YOUTUBE-DL
-        # =================================
+        # -----------------------------------------
+        # CREATE YT-DLP INSTANCE
+        # -----------------------------------------
 
         with YoutubeDL(options) as ydl:
 
-            # -----------------------------
-            # Extract information
-            # -----------------------------
+            # -------------------------------------
+            # GET VIDEO INFORMATION
+            # -------------------------------------
 
             info = ydl.extract_info(
                 url,
@@ -466,70 +421,58 @@ def download_video(
 
             if not info:
 
-                message = (
-                    "Could not extract "
-                    "video information."
+                error = (
+                    "Could not retrieve video information."
                 )
 
-                download_progress[
-                    "status"
-                ] = "Error"
+                download_progress["status"] = (
+                    "Error"
+                )
 
-                download_progress[
-                    "error"
-                ] = message
-
+                download_progress["error"] = (
+                    error
+                )
 
                 return {
                     "success": False,
-                    "error": message
+                    "error": error
                 }
 
 
-            # -----------------------------
-            # Video title
-            # -----------------------------
+            # -------------------------------------
+            # VIDEO TITLE
+            # -------------------------------------
 
             title = info.get(
                 "title",
-                "video"
+                "Downloaded Video"
             )
 
 
             print(
-                "Video title:",
-                title
+                f"Video title: {title}"
             )
 
 
-            # -----------------------------
-            # Download
-            # -----------------------------
+            # -------------------------------------
+            # DOWNLOAD
+            # -------------------------------------
 
-            ydl.download([
-                url
-            ])
+            ydl.download([url])
 
 
-            # -----------------------------
-            # Prepare filename
-            # -----------------------------
+            # -------------------------------------
+            # FIND FINAL FILE
+            # -------------------------------------
 
             filename = ydl.prepare_filename(
                 info
             )
 
+            base_filename = os.path.splitext(
+                filename
+            )[0]
 
-            base_filename = (
-                os.path.splitext(
-                    filename
-                )[0]
-            )
-
-
-            # -----------------------------
-            # Possible output files
-            # -----------------------------
 
             possible_files = [
 
@@ -547,102 +490,110 @@ def download_video(
             final_filename = None
 
 
-            # -----------------------------
-            # Find downloaded file
-            # -----------------------------
-
             for file_path in possible_files:
 
-                if os.path.exists(
-                    file_path
-                ):
+                if os.path.exists(file_path):
 
-                    final_filename = (
-                        file_path
-                    )
+                    final_filename = file_path
 
                     break
 
 
-            # -----------------------------
-            # File not found
-            # -----------------------------
+            # -------------------------------------
+            # FALLBACK
+            # -------------------------------------
 
             if not final_filename:
 
-                message = (
-                    "Download completed "
-                    "but output file was "
-                    "not found."
+                directory_files = os.listdir(
+                    DOWNLOAD_DIR
                 )
 
-                download_progress[
-                    "status"
-                ] = "Error"
+                matching_files = [
 
-                download_progress[
-                    "error"
-                ] = message
+                    os.path.join(
+                        DOWNLOAD_DIR,
+                        file
+                    )
 
+                    for file in directory_files
+
+                    if os.path.splitext(
+                        file
+                    )[0] == os.path.splitext(
+                        os.path.basename(filename)
+                    )[0]
+
+                ]
+
+
+                if matching_files:
+
+                    final_filename = (
+                        matching_files[0]
+                    )
+
+
+            # -------------------------------------
+            # FILE NOT FOUND
+            # -------------------------------------
+
+            if not final_filename:
+
+                error = (
+                    "Download completed, "
+                    "but the video file was not found."
+                )
+
+                download_progress["status"] = (
+                    "Error"
+                )
+
+                download_progress["error"] = (
+                    error
+                )
 
                 return {
                     "success": False,
-                    "error": message
+                    "error": error
                 }
 
 
-            # =================================
-            # DOWNLOAD COMPLETED
-            # =================================
+            # -------------------------------------
+            # SUCCESS
+            # -------------------------------------
 
-            download_progress[
-                "progress"
-            ] = 100
-
-
-            download_progress[
-                "status"
-            ] = "Completed"
-
-
-            download_progress[
-                "filename"
-            ] = os.path.basename(
+            final_filename = os.path.abspath(
                 final_filename
             )
 
+            download_progress["progress"] = 100
 
-            download_progress[
-                "completed"
-            ] = True
+            download_progress["status"] = (
+                "Completed"
+            )
+
+            download_progress["filename"] = (
+                os.path.basename(final_filename)
+            )
+
+            download_progress["completed"] = True
+
+            download_progress["error"] = None
 
 
-            download_progress[
-                "error"
-            ] = None
-
+            print("=" * 60)
 
             print(
-                "========================================"
+                "Download completed successfully."
             )
 
             print(
-                "DOWNLOAD COMPLETED"
+                f"File: {final_filename}"
             )
 
-            print(
-                "File:",
-                final_filename
-            )
+            print("=" * 60)
 
-            print(
-                "========================================"
-            )
-
-
-            # =================================
-            # RETURN RESULT
-            # =================================
 
             return {
 
@@ -654,57 +605,43 @@ def download_video(
                     final_filename
                 ),
 
-                "path": final_filename
+                "path": final_filename,
 
             }
 
 
-    # =====================================
-    # ERROR
-    # =====================================
+    # =========================================
+    # ERROR HANDLING
+    # =========================================
 
     except Exception as e:
 
-        error_message = str(e)
+        error = str(e)
 
-
-        download_progress[
-            "status"
-        ] = "Error"
-
-
-        download_progress[
-            "error"
-        ] = error_message
-
-
-        download_progress[
-            "completed"
-        ] = False
-
+        print("=" * 60)
 
         print(
-            "========================================"
+            "DOWNLOAD ERROR:"
         )
 
-        print(
-            "DOWNLOAD ERROR"
+        print(error)
+
+        print("=" * 60)
+
+
+        download_progress["status"] = (
+            "Error"
         )
 
-        print(
-            error_message
-        )
+        download_progress["error"] = error
 
-        print(
-            "========================================"
-        )
+        download_progress["completed"] = False
 
 
         return {
 
             "success": False,
 
-            "error": error_message
+            "error": error
 
         }
-        
