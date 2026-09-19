@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import ProgressBar from "./ProgressBar";
-import { downloadVideo } from "../services/api";
+import {
+  downloadVideo,
+  getDownloadFileUrl,
+} from "../services/api";
 
 function DownloadPage({ platform, onBack }) {
   const [url, setUrl] = useState("");
@@ -11,6 +14,10 @@ function DownloadPage({ platform, onBack }) {
   const isYouTube = platform === "youtube";
 
   const handleDownload = async () => {
+    // =========================================
+    // VALIDATE URL
+    // =========================================
+
     if (!url.trim()) {
       setStatus("Please enter a URL.");
       return;
@@ -21,20 +28,99 @@ function DownloadPage({ platform, onBack }) {
     setStatus("Connecting to server...");
 
     try {
-      const data = await downloadVideo(url.trim(), platform);
+      // =========================================
+      // DOWNLOAD VIDEO ON SERVER
+      // =========================================
 
-      console.log("Download result:", data);
+      const data = await downloadVideo(
+        url.trim(),
+        platform
+      );
+
+      console.log(
+        "Download result:",
+        data
+      );
+
+      // =========================================
+      // SERVER DOWNLOAD COMPLETED
+      // =========================================
 
       setProgress(100);
-      setStatus("Download completed!");
+      setStatus(
+        "Video downloaded on server."
+      );
+
+      // =========================================
+      // GET FILE URL
+      // =========================================
+
+      if (!data.download_url) {
+        throw new Error(
+          "Download completed, but file URL was not returned."
+        );
+      }
+
+      const fileUrl = getDownloadFileUrl(
+        data.download_url
+      );
+
+      console.log(
+        "File URL:",
+        fileUrl
+      );
+
+      // =========================================
+      // START PHONE / BROWSER DOWNLOAD
+      // =========================================
+
+      setStatus(
+        "Starting download to your device..."
+      );
+
+      const link = document.createElement("a");
+
+      link.href = fileUrl;
+
+      link.download =
+        data.filename || "video.mp4";
+
+      link.target = "_blank";
+
+      link.rel = "noopener noreferrer";
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      document.body.removeChild(link);
+
+      // =========================================
+      // SUCCESS
+      // =========================================
+
+      setStatus(
+        "Download started. Check your Downloads folder."
+      );
 
       setUrl("");
+
     } catch (error) {
-      console.error("Download error:", error);
+
+      console.error(
+        "Download error:",
+        error
+      );
 
       setProgress(0);
-      setStatus(error.message || "Download failed.");
+
+      setStatus(
+        error.message ||
+        "Download failed."
+      );
+
     } finally {
+
       setIsDownloading(false);
     }
   };
@@ -42,7 +128,10 @@ function DownloadPage({ platform, onBack }) {
   return (
     <main className="download-page">
 
-      {/* Back Button */}
+      {/* =========================================
+          BACK BUTTON
+      ========================================= */}
+
       <button
         className="back-button"
         onClick={onBack}
@@ -51,24 +140,37 @@ function DownloadPage({ platform, onBack }) {
         ← Back
       </button>
 
-      {/* Title */}
+
+      {/* =========================================
+          TITLE
+      ========================================= */}
+
       <h1 className="download-title">
         {isYouTube
           ? "Download YouTube Video"
           : "Download Instagram Reel"}
       </h1>
 
-      {/* Description */}
+
+      {/* =========================================
+          DESCRIPTION
+      ========================================= */}
+
       <p className="download-description">
         {isYouTube
           ? "Paste the YouTube video URL below"
           : "Paste an Instagram Reel URL below"}
       </p>
 
-      {/* Download Box */}
+
+      {/* =========================================
+          DOWNLOAD BOX
+      ========================================= */}
+
       <div className="download-box">
 
-        {/* URL Input */}
+        {/* URL INPUT */}
+
         <input
           type="text"
           className="url-input"
@@ -78,27 +180,41 @@ function DownloadPage({ platform, onBack }) {
               : "Paste Instagram Reel URL..."
           }
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) =>
+            setUrl(e.target.value)
+          }
           disabled={isDownloading}
         />
 
-        {/* Download Button */}
+
+        {/* DOWNLOAD BUTTON */}
+
         <button
           className="download-button"
           onClick={handleDownload}
           disabled={isDownloading}
         >
-          {isDownloading ? "Downloading..." : "Download"}
+          {isDownloading
+            ? "Downloading..."
+            : "Download"}
         </button>
 
       </div>
 
-      {/* Progress */}
-      {(isDownloading || progress > 0 || status) && (
+
+      {/* =========================================
+          PROGRESS
+      ========================================= */}
+
+      {(isDownloading ||
+        progress > 0 ||
+        status) && (
+
         <ProgressBar
           progress={progress}
           status={status}
         />
+
       )}
 
     </main>
