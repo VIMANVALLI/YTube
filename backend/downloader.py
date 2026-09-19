@@ -26,10 +26,10 @@ FFMPEG_PATH = shutil.which("ffmpeg")
 # DENO / JAVASCRIPT RUNTIME
 # =========================================
 
-# Try to find Deno from PATH first
+# Find Deno from PATH
 DENO_PATH = shutil.which("deno")
 
-# If not found in PATH, check the default Deno location
+# Fallback: default Deno installation path
 if not DENO_PATH:
 
     DEFAULT_DENO_PATH = os.path.expanduser(
@@ -462,14 +462,25 @@ def download_video(
 
         if DENO_PATH:
 
+            # IMPORTANT:
+            # yt-dlp expects:
+            # {
+            #     "deno": {
+            #         "path": "..."
+            #     }
+            # }
+
             options["js_runtimes"] = {
 
-                "deno": DENO_PATH
+                "deno": {
+                    "path": DENO_PATH
+                }
 
             }
 
+
             print(
-                f"Deno JavaScript runtime enabled: "
+                "Deno JavaScript runtime enabled: "
                 f"{DENO_PATH}"
             )
 
