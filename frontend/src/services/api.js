@@ -1,4 +1,4 @@
-const API_URL = "https://ytube-v1ap.onrender.com";
+const API_URL = "https://ytube-2.onrender.com";
 
 export const downloadVideo = async (url, platform) => {
   const response = await fetch(`${API_URL}/download`, {
