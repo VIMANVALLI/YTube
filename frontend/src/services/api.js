@@ -2,7 +2,8 @@ const API_URL = "https://ytube-100.onrender.com";
 
 export const downloadVideo = async (
   url,
-  platform
+  platform,
+  format
 ) => {
   const response = await fetch(
     `${API_URL}/download`,
@@ -16,6 +17,7 @@ export const downloadVideo = async (
       body: JSON.stringify({
         url,
         platform,
+        format,
       }),
     }
   );
@@ -32,10 +34,9 @@ export const downloadVideo = async (
 };
 
 
-// =========================================
-// GET FULL FILE URL
-// =========================================
-
+// ===============================
+// GET DOWNLOAD FILE URL
+// ===============================
 export const getDownloadFileUrl = (
   downloadUrl
 ) => {
@@ -43,10 +44,9 @@ export const getDownloadFileUrl = (
 };
 
 
-// =========================================
+// ===============================
 // GET DOWNLOADED VIDEOS
-// =========================================
-
+// ===============================
 export const getDownloadedVideos = async () => {
   const response = await fetch(
     `${API_URL}/downloads`
@@ -57,7 +57,7 @@ export const getDownloadedVideos = async () => {
   if (!response.ok) {
     throw new Error(
       data.detail ||
-      "Failed to get downloads"
+        "Failed to get downloads"
     );
   }
 
@@ -65,10 +65,9 @@ export const getDownloadedVideos = async () => {
 };
 
 
-// =========================================
-// DELETE VIDEO
-// =========================================
-
+// ===============================
+// DELETE DOWNLOADED VIDEO
+// ===============================
 export const deleteDownloadedVideo = async (
   filename
 ) => {
@@ -86,7 +85,7 @@ export const deleteDownloadedVideo = async (
   if (!response.ok) {
     throw new Error(
       data.detail ||
-      "Failed to delete video"
+        "Failed to delete video"
     );
   }
 
