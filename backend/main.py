@@ -1,20 +1,8 @@
 import os
 
-from pathlib import Path
-
-from fastapi import (
-    FastAPI,
-    HTTPException
-)
-
-from fastapi.middleware.cors import (
-    CORSMiddleware
-)
-
-from fastapi.responses import (
-    FileResponse
-)
-
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from downloader import (
@@ -43,36 +31,24 @@ FRONTEND_URL = os.getenv(
     "http://localhost:3000"
 )
 
-
 app.add_middleware(
     CORSMiddleware,
-
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://ytube-10.onrender.com",
+        "https://ytube-50.onrender.com",
         FRONTEND_URL,
     ],
-
     allow_credentials=True,
-
     allow_methods=["*"],
-
     allow_headers=["*"],
 )
-
 
 # =========================================
 # DOWNLOAD FOLDER
 # =========================================
 
-DOWNLOAD_DIR = os.path.join(
-    os.path.dirname(
-        os.path.abspath(__file__)
-    ),
-    "downloads"
-)
-
+DOWNLOAD_DIR = "downloads"
 
 os.makedirs(
     DOWNLOAD_DIR,
@@ -85,12 +61,8 @@ os.makedirs(
 # =========================================
 
 class DownloadRequest(BaseModel):
-
     url: str
-
     platform: str
-
-    format: str = "mp4"
 
 
 # =========================================
@@ -101,22 +73,17 @@ class DownloadRequest(BaseModel):
 def home():
 
     return {
-
         "message": "Video Downloader API is running",
-
         "status": "success"
-
     }
 
 
 # =========================================
-# DOWNLOAD VIDEO / AUDIO
+# DOWNLOAD VIDEO
 # =========================================
 
 @app.post("/download")
-def download(
-    request: DownloadRequest
-):
+def download(request: DownloadRequest):
 
     # -------------------------------------
     # Validate platform
@@ -128,35 +95,8 @@ def download(
     ]:
 
         raise HTTPException(
-
             status_code=400,
-
-            detail=(
-                "Platform must be "
-                "youtube or instagram"
-            )
-
-        )
-
-
-    # -------------------------------------
-    # Validate format
-    # -------------------------------------
-
-    if request.format not in [
-        "mp4",
-        "mp3"
-    ]:
-
-        raise HTTPException(
-
-            status_code=400,
-
-            detail=(
-                "Format must be "
-                "mp4 or mp3"
-            )
-
+            detail="Platform must be youtube or instagram"
         )
 
 
@@ -167,11 +107,8 @@ def download(
     if not request.url.strip():
 
         raise HTTPException(
-
             status_code=400,
-
             detail="URL is required"
-
         )
 
 
@@ -180,13 +117,8 @@ def download(
     # -------------------------------------
 
     result = download_video(
-
         request.url.strip(),
-
-        request.platform,
-
-        request.format
-
+        request.platform
     )
 
 
@@ -197,11 +129,8 @@ def download(
     if not result["success"]:
 
         raise HTTPException(
-
             status_code=500,
-
             detail=result["error"]
-
         )
 
 
@@ -210,11 +139,8 @@ def download(
     # -------------------------------------
 
     download_url = (
-
         "/downloads/"
-
         + result["filename"]
-
     )
 
 
@@ -223,19 +149,11 @@ def download(
     # -------------------------------------
 
     return {
-
         "message": "Download completed",
-
         "title": result["title"],
-
         "filename": result["filename"],
-
         "path": result["path"],
-
-        "format": request.format,
-
         "download_url": download_url
-
     }
 
 
@@ -247,38 +165,19 @@ def download(
 def get_progress():
 
     return {
-
-        "progress":
-            download_progress["progress"],
-
-        "status":
-            download_progress["status"],
-
-        "downloaded_bytes":
-            download_progress[
-                "downloaded_bytes"
-            ],
-
-        "total_bytes":
-            download_progress[
-                "total_bytes"
-            ],
-
-        "speed":
-            download_progress["speed"],
-
-        "eta":
-            download_progress["eta"],
-
-        "filename":
-            download_progress["filename"],
-
-        "completed":
-            download_progress["completed"],
-
-        "error":
-            download_progress["error"]
-
+        "progress": download_progress["progress"],
+        "status": download_progress["status"],
+        "downloaded_bytes": download_progress[
+            "downloaded_bytes"
+        ],
+        "total_bytes": download_progress[
+            "total_bytes"
+        ],
+        "speed": download_progress["speed"],
+        "eta": download_progress["eta"],
+        "filename": download_progress["filename"],
+        "completed": download_progress["completed"],
+        "error": download_progress["error"]
     }
 
 
@@ -291,7 +190,6 @@ def get_downloads():
 
     videos = []
 
-
     for filename in os.listdir(
         DOWNLOAD_DIR
     ):
@@ -301,41 +199,29 @@ def get_downloads():
             filename
         )
 
-
-        if os.path.isfile(
-            file_path
-        ):
+        if os.path.isfile(file_path):
 
             videos.append({
-
                 "filename": filename,
-
                 "path": file_path,
-
-                "download_url":
+                "download_url": (
                     "/downloads/"
                     + filename
-
+                )
             })
 
-
     return {
-
         "count": len(videos),
-
         "videos": videos
-
     }
 
 
 # =========================================
-# SERVE DOWNLOADED FILE
+# SERVE VIDEO
 # =========================================
 
 @app.get("/downloads/{filename}")
-def serve_download(
-    filename: str
-):
+def serve_download(filename: str):
 
     # -------------------------------------
     # Prevent path traversal
@@ -344,7 +230,6 @@ def serve_download(
     safe_filename = os.path.basename(
         filename
     )
-
 
     file_path = os.path.join(
         DOWNLOAD_DIR,
@@ -356,95 +241,38 @@ def serve_download(
     # Check file
     # -------------------------------------
 
-    if not os.path.exists(
-        file_path
-    ):
+    if not os.path.exists(file_path):
 
         raise HTTPException(
-
             status_code=404,
-
-            detail="File not found"
-
+            detail="Video not found"
         )
 
-
-    if not os.path.isfile(
-        file_path
-    ):
+    if not os.path.isfile(file_path):
 
         raise HTTPException(
-
             status_code=404,
-
             detail="Invalid file"
-
         )
 
 
     # -------------------------------------
-    # Detect media type
-    # -------------------------------------
-
-    extension = Path(
-        safe_filename
-    ).suffix.lower()
-
-
-    media_types = {
-
-        ".mp4":
-            "video/mp4",
-
-        ".mp3":
-            "audio/mpeg",
-
-        ".webm":
-            "video/webm",
-
-        ".mkv":
-            "video/x-matroska",
-
-        ".mov":
-            "video/quicktime",
-
-    }
-
-
-    media_type = media_types.get(
-
-        extension,
-
-        "application/octet-stream"
-
-    )
-
-
-    # -------------------------------------
-    # Serve file
+    # Serve video
     # -------------------------------------
 
     return FileResponse(
-
         path=file_path,
-
         filename=safe_filename,
-
-        media_type=media_type
-
+        media_type="video/mp4"
     )
 
 
 # =========================================
-# DELETE DOWNLOADED FILE
+# DELETE VIDEO
 # =========================================
 
-@app.delete(
-    "/downloads/{filename}"
-)
-def delete_download(
-    filename: str
-):
+@app.delete("/downloads/{filename}")
+def delete_download(filename: str):
 
     # -------------------------------------
     # Prevent path traversal
@@ -453,7 +281,6 @@ def delete_download(
     safe_filename = os.path.basename(
         filename
     )
-
 
     file_path = os.path.join(
         DOWNLOAD_DIR,
@@ -465,60 +292,38 @@ def delete_download(
     # Check file
     # -------------------------------------
 
-    if not os.path.exists(
-        file_path
-    ):
+    if not os.path.exists(file_path):
 
         raise HTTPException(
-
             status_code=404,
-
-            detail="File not found"
-
+            detail="Video not found"
         )
 
-
-    if not os.path.isfile(
-        file_path
-    ):
+    if not os.path.isfile(file_path):
 
         raise HTTPException(
-
             status_code=404,
-
             detail="Invalid file"
-
         )
 
 
     # -------------------------------------
-    # Delete file
+    # Delete video
     # -------------------------------------
 
     try:
 
-        os.remove(
-            file_path
-        )
-
+        os.remove(file_path)
 
         return {
-
-            "message":
-                "File deleted successfully",
-
-            "filename":
-                safe_filename
-
+            "message": "Video deleted successfully",
+            "filename": safe_filename
         }
-
 
     except Exception as e:
 
         raise HTTPException(
-
             status_code=500,
-
             detail=str(e)
-
         )
+
