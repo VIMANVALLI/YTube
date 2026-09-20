@@ -26,10 +26,12 @@ FFMPEG_PATH = shutil.which("ffmpeg")
 # DENO / JAVASCRIPT RUNTIME
 # =========================================
 
+# Find Deno from PATH
 DENO_PATH = shutil.which("deno")
 
 # Fallback: default Deno installation path
 if not DENO_PATH:
+
     DEFAULT_DENO_PATH = os.path.expanduser(
         "~/.deno/bin/deno"
     )
@@ -73,6 +75,7 @@ def prepare_youtube_cookies():
     if not os.path.exists(
         YOUTUBE_COOKIES_SOURCE
     ):
+
         print(
             "WARNING: YouTube Secret File not found."
         )
@@ -249,7 +252,7 @@ def progress_hook(data):
 
         download_progress[
             "status"
-        ] = "Processing file..."
+        ] = "Processing video..."
 
 
         filename = data.get(
@@ -268,13 +271,12 @@ def progress_hook(data):
 
 
 # =========================================
-# DOWNLOAD VIDEO / AUDIO
+# DOWNLOAD VIDEO
 # =========================================
 
 def download_video(
     url: str,
-    platform: str,
-    format: str = "mp4"
+    platform: str
 ):
 
     reset_progress()
@@ -290,37 +292,6 @@ def download_video(
     ]:
 
         error = "Unsupported platform."
-
-        download_progress[
-            "status"
-        ] = "Error"
-
-        download_progress[
-            "error"
-        ] = error
-
-
-        return {
-
-            "success": False,
-
-            "error": error
-
-        }
-
-
-    # =====================================
-    # VALIDATE FORMAT
-    # =====================================
-
-    if format not in [
-        "mp4",
-        "mp3"
-    ]:
-
-        error = (
-            "Please select a valid format."
-        )
 
         download_progress[
             "status"
@@ -417,119 +388,70 @@ def download_video(
     # YT-DLP OPTIONS
     # =====================================
 
-    # MP3
-    if format == "mp3":
+    options = {
 
-        options = {
+        # Best available video + audio
+        "format": "bv*+ba/b",
 
-            # Best available audio
-            "format": "bestaudio/best",
 
-            # Convert audio to MP3
-            "postprocessors": [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
-                }
-            ],
+        # Merge into MP4
+        "merge_output_format": "mp4",
 
-            # FFmpeg
-            "ffmpeg_location": FFMPEG_PATH,
 
-            # Output file
-            "outtmpl": os.path.join(
-                DOWNLOAD_DIR,
-                "%(title)s.%(ext)s"
-            ),
+        # FFmpeg
+        "ffmpeg_location": FFMPEG_PATH,
 
-            # Don't download playlists
-            "noplaylist": True,
 
-            # Console output
-            "quiet": False,
+        # Output file
+        "outtmpl": os.path.join(
+            DOWNLOAD_DIR,
+            "%(title)s.%(ext)s"
+        ),
 
-            "no_warnings": False,
 
-            # Don't ignore errors
-            "ignoreerrors": False,
+        # Don't download playlists
+        "noplaylist": True,
 
-            # Safe filenames
-            "restrictfilenames": True,
 
-            # Replace existing files
-            "overwrites": True,
+        # Console output
+        "quiet": False,
 
-            # Progress hook
-            "progress_hooks": [
-                progress_hook
-            ],
 
-            # Retry settings
-            "retries": 5,
+        "no_warnings": False,
 
-            "fragment_retries": 5,
 
-            # Network timeout
-            "socket_timeout": 30,
+        # Don't ignore errors
+        "ignoreerrors": False,
 
-            # HTTP chunk size
-            "http_chunk_size": 10485760,
-        }
 
-    # MP4
-    else:
+        # Safe filenames
+        "restrictfilenames": True,
 
-        options = {
 
-            # Best available video + audio
-            "format": "bv*+ba/b",
+        # Replace existing files
+        "overwrites": True,
 
-            # Merge into MP4
-            "merge_output_format": "mp4",
 
-            # FFmpeg
-            "ffmpeg_location": FFMPEG_PATH,
+        # Progress hook
+        "progress_hooks": [
+            progress_hook
+        ],
 
-            # Output file
-            "outtmpl": os.path.join(
-                DOWNLOAD_DIR,
-                "%(title)s.%(ext)s"
-            ),
 
-            # Don't download playlists
-            "noplaylist": True,
+        # Retry settings
+        "retries": 5,
 
-            # Console output
-            "quiet": False,
+        "fragment_retries": 5,
 
-            "no_warnings": False,
 
-            # Don't ignore errors
-            "ignoreerrors": False,
+        # Network timeout
+        "socket_timeout": 30,
 
-            # Safe filenames
-            "restrictfilenames": True,
 
-            # Replace existing files
-            "overwrites": True,
+        # HTTP chunk size
+        "http_chunk_size": 10485760,
 
-            # Progress hook
-            "progress_hooks": [
-                progress_hook
-            ],
-
-            # Retry settings
-            "retries": 5,
-
-            "fragment_retries": 5,
-
-            # Network timeout
-            "socket_timeout": 30,
-
-            # HTTP chunk size
-            "http_chunk_size": 10485760,
-        }
+    }
 
 
     # =====================================
@@ -540,8 +462,8 @@ def download_video(
 
         if DENO_PATH:
 
+            # IMPORTANT:
             # yt-dlp expects:
-            #
             # {
             #     "deno": {
             #         "path": "..."
@@ -551,9 +473,7 @@ def download_video(
             options["js_runtimes"] = {
 
                 "deno": {
-
                     "path": DENO_PATH
-
                 }
 
             }
@@ -615,7 +535,7 @@ def download_video(
         print("=" * 60)
 
         print(
-            f"Starting {platform} {format} download:"
+            f"Starting {platform} download:"
         )
 
         print(url)
@@ -631,10 +551,6 @@ def download_video(
         print(
             f"YouTube cookies: "
             f"{youtube_cookies_ready}"
-        )
-
-        print(
-            f"Format: {format}"
         )
 
         print("=" * 60)
@@ -663,6 +579,7 @@ def download_video(
                     "Could not retrieve "
                     "video information."
                 )
+
 
                 download_progress[
                     "status"
@@ -727,13 +644,8 @@ def download_video(
 
             possible_files = [
 
-                # MP4
                 base_filename + ".mp4",
 
-                # MP3
-                base_filename + ".mp3",
-
-                # Other video formats
                 base_filename + ".mkv",
 
                 base_filename + ".webm",
@@ -803,27 +715,8 @@ def download_video(
 
                 if matching_files:
 
-                    # Prefer requested format
-                    preferred_extension = (
-                        ".mp3"
-                        if format == "mp3"
-                        else ".mp4"
-                    )
-
-                    preferred_file = next(
-                        (
-                            file
-                            for file in matching_files
-                            if file.lower().endswith(
-                                preferred_extension
-                            )
-                        ),
-                        None
-                    )
-
                     final_filename = (
-                        preferred_file
-                        or matching_files[0]
+                        matching_files[0]
                     )
 
 
@@ -835,7 +728,7 @@ def download_video(
 
                 error = (
                     "Download completed, "
-                    "but the output file "
+                    "but the video file "
                     "was not found."
                 )
 
@@ -967,3 +860,4 @@ def download_video(
             "error": error
 
         }
+
